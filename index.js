@@ -2,39 +2,31 @@ require('dotenv').config()
 const express = require('express')
 const bodyParser = require('body-parser')
 const twilio = require('twilio')
-const OpenAI = require('openai')
+const { OpenAI } = require('openai')
 
+// Initialisation du serveur
 const app = express()
 app.use(bodyParser.urlencoded({ extended: false }))
 
+// Config OpenAI version 6+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 })
 
+// Route pour WhatsApp
 app.post('/whatsapp', async (req, res) => {
   const userMessage = req.body.Body || 'Message vide'
-  let reply = "Désolé, je n'ai pas pu répondre."
+
+  let reply = 'Désolé, je n’ai pas pu répondre.'
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages: [
-        {
-          role: "system",
-          content: "Tu es un assistant WhatsApp intelligent, clair et respectueux. Tu réponds en français simple, avec des messages courts et utiles. Tu aides l'utilisateur sans être trop long."
-        },
-        {
-          role: "user",
-          content: userMessage
-        }
-      ],
-      max_tokens: 200,
-      temperature: 0.6
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: userMessage }]
     })
-
     reply = completion.choices[0].message.content
   } catch (error) {
-    console.error("Erreur OpenAI:", error)
+    console.error(error)
   }
 
   const twiml = new twilio.twiml.MessagingResponse()
@@ -43,6 +35,7 @@ app.post('/whatsapp', async (req, res) => {
   res.type('text/xml').send(twiml.toString())
 })
 
+// Lancement du serveur
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
   console.log(`Serveur lancé sur le port ${PORT}`)
