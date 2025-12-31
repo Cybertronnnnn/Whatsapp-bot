@@ -1,42 +1,43 @@
-require('dotenv').config()
-const express = require('express')
-const bodyParser = require('body-parser')
-const twilio = require('twilio')
-const { OpenAI } = require('openai')
+require('dotenv').config();
+const express = require('express');
+const bodyParser = require('body-parser');
+const twilio = require('twilio');
+const OpenAI = require('openai');
+const { saveMessage, getMessages } = require('./db');
 
-// Initialisation du serveur
-const app = express()
-app.use(bodyParser.urlencoded({ extended: false }))
+const app = express();
+app.use(bodyParser.urlencoded({ extended: false }));
 
-// Config OpenAI version 6+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
-})
+});
 
-// Route pour WhatsApp
 app.post('/whatsapp', async (req, res) => {
-  const userMessage = req.body.Body || 'Message vide'
+  const userNumber = req.body.From || 'unknown';
+  const userMessage = req.body.Body || 'Message vide';
 
-  let reply = 'Désolé, je n’ai pas pu répondre.'
+  // Sauvegarder le message de l'utilisateur
+  await saveMessage(userNumber, userMessage);
 
+  // Récupérer l'historique
+  const history = await getMessages(userNumber);
+
+  let reply = 'Désolé, je n’ai pas pu répondre.';
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: userMessage }]
-    })
-    reply = completion.choices[0].message.content
-  } catch (error) {
-    console.error(error)
+      messages: [{ role: 'user', content: history }]
+    });
+    reply = completion.choices[0].message.content;
+  } catch (err) {
+    console.error(err);
   }
 
-  const twiml = new twilio.twiml.MessagingResponse()
-  twiml.message(reply)
+  const twiml = new twilio.twiml.MessagingResponse();
+  twiml.message(reply);
 
-  res.type('text/xml').send(twiml.toString())
-})
+  res.type('text/xml').send(twiml.toString());
+});
 
-// Lancement du serveur
-const PORT = process.env.PORT || 3000
-app.listen(PORT, () => {
-  console.log(`Serveur lancé sur le port ${PORT}`)
-})
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Serveur lancé sur le port ${PORT}`));
