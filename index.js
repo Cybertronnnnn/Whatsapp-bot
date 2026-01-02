@@ -2,22 +2,23 @@ require('dotenv').config()
 const express = require('express')
 const bodyParser = require('body-parser')
 const twilio = require('twilio')
-const Groq = require('groq-sdk')
 const { Pool } = require('pg')
+const Groq = require('groq-sdk')
 
 const app = express()
 app.use(bodyParser.urlencoded({ extended: false }))
 
-// Groq client
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+// ✅ Groq (clé UNIQUEMENT sur Render)
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+})
 
-// PostgreSQL
+// ✅ PostgreSQL (DATABASE_URL sur Render)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 })
 
-// WhatsApp endpoint
 app.post('/whatsapp', async (req, res) => {
   const userMessage = req.body.Body || 'Message vide'
   const userNumber = req.body.From || 'Unknown'
@@ -25,18 +26,16 @@ app.post('/whatsapp', async (req, res) => {
   let reply = 'Désolé, une erreur est survenue.'
 
   try {
-    // Appel Groq avec modèle valide
     const completion = await groq.chat.completions.create({
       model: 'groq/compound-mini',
       messages: [
-        { role: 'system', content: 'Tu es un assistant WhatsApp poli et clair.' },
+        { role: 'system', content: 'Tu es un assistant WhatsApp clair et poli.' },
         { role: 'user', content: userMessage }
       ]
     })
 
     reply = completion.choices[0].message.content
 
-    // Sauvegarde dans PostgreSQL
     await pool.query(
       'INSERT INTO messages (user_number, message, response) VALUES ($1, $2, $3)',
       [userNumber, userMessage, reply]
