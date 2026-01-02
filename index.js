@@ -8,18 +8,16 @@ const { Pool } = require('pg')
 const app = express()
 app.use(bodyParser.urlencoded({ extended: false }))
 
-// ✅ Client Groq
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY
-})
+// Groq client
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
-// ✅ PostgreSQL
+// PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 })
 
-// WhatsApp webhook
+// WhatsApp endpoint
 app.post('/whatsapp', async (req, res) => {
   const userMessage = req.body.Body || 'Message vide'
   const userNumber = req.body.From || 'Unknown'
@@ -27,9 +25,9 @@ app.post('/whatsapp', async (req, res) => {
   let reply = 'Désolé, une erreur est survenue.'
 
   try {
-    // Appel Groq
+    // Appel Groq avec modèle valide
     const completion = await groq.chat.completions.create({
-      model: 'llama3-8b-8192',
+      model: 'groq/compound-mini',
       messages: [
         { role: 'system', content: 'Tu es un assistant WhatsApp poli et clair.' },
         { role: 'user', content: userMessage }
@@ -43,6 +41,7 @@ app.post('/whatsapp', async (req, res) => {
       'INSERT INTO messages (user_number, message, response) VALUES ($1, $2, $3)',
       [userNumber, userMessage, reply]
     )
+
   } catch (err) {
     console.error('Erreur Groq ou PostgreSQL:', err.message)
   }
