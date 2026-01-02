@@ -8,12 +8,12 @@ const { Pool } = require('pg')
 const app = express()
 app.use(bodyParser.urlencoded({ extended: false }))
 
-// Groq
+// ✅ Client Groq
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 })
 
-// PostgreSQL
+// ✅ PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
@@ -27,6 +27,7 @@ app.post('/whatsapp', async (req, res) => {
   let reply = 'Désolé, une erreur est survenue.'
 
   try {
+    // Appel Groq
     const completion = await groq.chat.completions.create({
       model: 'llama3-8b-8192',
       messages: [
@@ -37,6 +38,7 @@ app.post('/whatsapp', async (req, res) => {
 
     reply = completion.choices[0].message.content
 
+    // Sauvegarde dans PostgreSQL
     await pool.query(
       'INSERT INTO messages (user_number, message, response) VALUES ($1, $2, $3)',
       [userNumber, userMessage, reply]
